@@ -13,8 +13,8 @@ type Page struct {
 }
 
 type Link struct {
-	Url          string
-	StatusCode   int
-	IsInternal   bool
-	IsAccessible bool
+	Url          string `json:"url"`
+	StatusCode   int    `json:"statusCode"`
+	IsInternal   bool   `json:"isInternal"`
+	IsAccessible bool   `json:"isAccessible"`
 }
