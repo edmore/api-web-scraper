@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/edmore/api-web-scraper/resource"
+	"github.com/edmore/api-web-scraper/service"
 	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/debug"
 	"github.com/gocolly/colly/extensions"
 	"github.com/gocolly/redisstorage"
 )
@@ -29,7 +31,7 @@ func main() {
 		// is visited, and no further links are followed
 		colly.MaxDepth(1),
 		colly.Async(true),
-		// colly.Debugger(&debug.LogDebugger{}),
+		colly.Debugger(&debug.LogDebugger{}),
 	)
 	extensions.RandomUserAgent(defaultCollector)
 	// extensions.Referer(collector)
@@ -54,8 +56,8 @@ func main() {
 		panic(err)
 	}
 
-	delegateCollector := defaultCollector.Clone()
+	srv := service.NewCollector(defaultCollector, storage)
 
-	router := resource.NewRouter(defaultCollector, delegateCollector, storage)
+	router := resource.NewRouter(srv)
 	router.Run()
 }

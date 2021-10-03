@@ -3,16 +3,15 @@ package resource
 import (
 	"net/http"
 
+	"github.com/edmore/api-web-scraper/service"
 	"github.com/gin-gonic/gin"
-	"github.com/gocolly/colly"
-	"github.com/gocolly/redisstorage"
 )
 
-func NewRouter(defaultCollector *colly.Collector, delegateCollector *colly.Collector, storage *redisstorage.Storage) *gin.Engine {
+func NewRouter(srv service.CollectorService) *gin.Engine {
 	router := gin.Default()
 	basePath := "/scraper"
 
-	handlers := Handler{defaultCollector, delegateCollector, storage}
+	handlers := Handler{srv}
 
 	r := router.Group(basePath)
 

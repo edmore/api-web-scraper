@@ -4,7 +4,7 @@ type Page struct {
 	HtmlVersion            string         `json:"htmlVersion"`
 	Title                  string         `json:"title"`
 	HeadingsCount          map[string]int `json:"headingsCountByLevel"`
-	Links                  []Link         `json:"links"`
+	Links                  map[string]int `json:"links"`
 	InternalLinksCount     int            `json:"internalLinksCount"`
 	ExternalLinksCount     int            `json:"externalLinksCount"`
 	InaccessibleLinksCount int            `json:"inaccessibleLinksCount"`
