@@ -21,10 +21,6 @@ type CollectorService interface {
 }
 
 var doctypes = make(map[string]string)
-
-// var ch = make(chan model.Link, 0)
-// var links = []model.Link{}
-
 var links = make(map[string]int)
 
 type Collector struct {
@@ -120,7 +116,7 @@ func (s *Collector) registerInaccessibleLinksCallback() error {
 
 	s.DelegateCollector.OnError(func(r *colly.Response, err error) {
 
-		links[r.Request.URL.String()]++
+		links["inaccessible"]++
 
 	})
 
@@ -130,7 +126,7 @@ func (s *Collector) registerInaccessibleLinksCallback() error {
 func (s *Collector) registerAccessibleLinksCallback() error {
 	s.DelegateCollector.OnResponse(func(r *colly.Response) {
 
-		links[r.Request.URL.String()]++
+		links["accessible"]++
 	})
 
 	return nil
