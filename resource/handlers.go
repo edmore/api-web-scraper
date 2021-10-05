@@ -27,13 +27,14 @@ func (h *Handler) GetPageContents(c *gin.Context) {
 	}
 	h.CollectorService.Visit(parsedURL.String())
 
+	links, linksCount := h.CollectorService.GetLinks()
 	c.JSON(http.StatusOK, gin.H{
 		"results": model.Page{
 			HtmlVersion:   h.CollectorService.GetHtmlVersion(),
 			Title:         h.CollectorService.GetPageTitle(),
 			HeadingsCount: h.CollectorService.GetHeadings(),
-			Links:         h.CollectorService.GetLinks(),
-			LinksCount:    h.CollectorService.GetLinksCount(),
+			Links:         links,
+			LinksCount:    linksCount,
 			HasLoginForm:  h.CollectorService.HasLoginForm(),
 		},
 	})

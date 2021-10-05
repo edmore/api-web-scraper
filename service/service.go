@@ -17,15 +17,13 @@ type CollectorService interface {
 	Visit(url string) error
 	GetPageTitle() string
 	GetHtmlVersion() string
-	GetLinksCount() map[string]int
-	GetLinks() []model.Link
+	GetLinks() ([]model.Link, map[string]int)
 	GetHeadings() map[string]int
 	HasLoginForm() bool
 	Reset() error
 }
 
 var doctypes = make(map[string]string)
-var linksCount = make(map[string]int)
 
 type Collector struct {
 	DefaultCollector  *colly.Collector
@@ -62,7 +60,6 @@ func (c *Collector) init() error {
 	c.registerInaccessibleLinksCallback()
 	c.registerAccessibleLinksCallback()
 	c.registerHtmlCallback()
-	c.registerOnScrapedCallback()
 
 	return nil
 }
@@ -165,17 +162,6 @@ func (c *Collector) addLinks(IsAccessible bool, isInternal bool, statusCode int,
 	c.Storage.Client.LPush("links", link)
 }
 
-func (c *Collector) registerOnScrapedCallback() error {
-	c.DefaultCollector.OnScraped(func(r *colly.Response) {
-
-		p, _ := json.Marshal(linksCount)
-		c.setBytes("linksCount", p, 0)
-
-	})
-
-	return nil
-}
-
 func (c *Collector) Reset() error {
 	keys := []string{
 		"htmlVersion", "title", "headings",
@@ -199,17 +185,10 @@ func (c *Collector) GetHtmlVersion() string {
 	return c.getValue("htmlVersion")
 }
 
-func (c *Collector) GetLinksCount() map[string]int {
-	var result = make(map[string]int)
-	p, _ := c.getBytes("linksCount")
-
-	_ = json.Unmarshal(p, &result)
-	return result
-}
-
-func (c *Collector) GetLinks() []model.Link {
+func (c *Collector) GetLinks() ([]model.Link, map[string]int) {
 	var links = []model.Link{}
 	var link = model.Link{}
+	var linkCounts = map[string]int{}
 	v := c.Storage.Client.LLen("links").Val()
 
 	var i int64
@@ -218,12 +197,21 @@ func (c *Collector) GetLinks() []model.Link {
 		l, _ := c.Storage.Client.LPop("links").Bytes()
 		_ = json.Unmarshal(l, &link)
 
-		println(string(l))
-
 		links = append(links, link)
+		if link.IsAccessible {
+			linkCounts["accessible"]++
+		} else {
+			linkCounts["inaccessible"]++
+		}
+
+		if link.IsInternal {
+			linkCounts["internal"]++
+		} else {
+			linkCounts["external"]++
+		}
 	}
 
-	return links
+	return links, linkCounts
 }
 
 func (c *Collector) GetHeadings() map[string]int {
@@ -269,10 +257,10 @@ func determineDoctype(html string) string {
 func isInternal(pageURL *url.URL, followedURL *url.URL) bool {
 
 	if followedURL.IsAbs() && pageURL.Host != followedURL.Host {
-		return true
+		return false
 	}
 
-	return false
+	return true
 }
 
 // Storage helpers
