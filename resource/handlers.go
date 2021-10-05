@@ -34,7 +34,8 @@ func (h *Handler) GetPageContents(c *gin.Context) {
 			HtmlVersion:   h.Collector.GetHtmlVersion(),
 			Title:         h.Collector.GetPageTitle(),
 			HeadingsCount: h.Collector.GetHeadings(),
-			Links:         h.Collector.GetLinks(),
+			LinksCount:    h.Collector.GetLinks(),
+			HasLoginForm:  h.Collector.HasLoginForm(),
 		},
 	})
 }

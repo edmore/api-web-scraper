@@ -28,7 +28,7 @@ func main() {
 	// configure defaultCollector
 	defaultCollector := colly.NewCollector(
 		// MaxDepth is 1, so only the links on the scraped page
-		// is visited, and no further links are followed
+		// are visited, and no further links are followed
 		colly.MaxDepth(1),
 		colly.Async(true),
 		colly.Debugger(&debug.LogDebugger{}),

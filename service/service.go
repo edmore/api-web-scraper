@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"net/url"
 	"strings"
 
 	"github.com/gocolly/colly"
@@ -17,11 +18,12 @@ type CollectorService interface {
 	GetHtmlVersion() string
 	GetLinks() map[string]int
 	GetHeadings() map[string]int
+	HasLoginForm() bool
 	Reset() error
 }
 
 var doctypes = make(map[string]string)
-var links = make(map[string]int)
+var linksCount = make(map[string]int)
 
 type Collector struct {
 	DefaultCollector  *colly.Collector
@@ -31,11 +33,15 @@ type Collector struct {
 
 func NewCollector(defaultCollector *colly.Collector, storage *redisstorage.Storage) *Collector {
 	delegateCollector := defaultCollector.Clone()
+	defaultCollector.MaxDepth = 2
 
 	return &Collector{defaultCollector, delegateCollector, storage}
 }
 
 func (s *Collector) Visit(u string) error {
+
+	s.Storage.Client.Set(
+		"url", u, 0)
 
 	s.DefaultCollector.Visit(u)
 	s.DefaultCollector.Wait()
@@ -81,19 +87,22 @@ func (s *Collector) registerHtmlVersionCallback() error {
 func (s *Collector) registerHtmlCallback() error {
 	s.DefaultCollector.OnHTML("html", func(html *colly.HTMLElement) {
 		var headings = make(map[string]int)
-		var passwordFields = make(map[string]int)
+		var numberOfPasswordFields int
 
 		html.ForEach("h1,h2,h3,h4,h5,h6", func(index int, hElement *colly.HTMLElement) {
 			headings[hElement.Name]++
 		})
 
 		html.ForEach("input[type=password]", func(n int, hElement *colly.HTMLElement) {
-			passwordFields[hElement.Name]++
+			numberOfPasswordFields++
 		})
 
 		h, _ := json.Marshal(headings)
 		s.Storage.Client.Set(
 			"headings", h, 0)
+
+		s.Storage.Client.Set(
+			"numberOfPasswordFields", numberOfPasswordFields, 0)
 
 	})
 
@@ -116,7 +125,15 @@ func (s *Collector) registerInaccessibleLinksCallback() error {
 
 	s.DelegateCollector.OnError(func(r *colly.Response, err error) {
 
-		links["inaccessible"]++
+		u := s.Storage.Client.Get("url").Val()
+		parsedURL, _ := url.Parse(u)
+		linksCount["inaccessible"]++
+
+		if r.Request.URL.IsAbs() && parsedURL.Host != r.Request.URL.Host {
+			linksCount["external"]++
+		} else {
+			linksCount["internal"]++
+		}
 
 	})
 
@@ -125,8 +142,15 @@ func (s *Collector) registerInaccessibleLinksCallback() error {
 
 func (s *Collector) registerAccessibleLinksCallback() error {
 	s.DelegateCollector.OnResponse(func(r *colly.Response) {
+		u := s.Storage.Client.Get("url").Val()
+		parsedURL, _ := url.Parse(u)
+		linksCount["accessible"]++
 
-		links["accessible"]++
+		if r.Request.URL.IsAbs() && parsedURL.Host != r.Request.URL.Host {
+			linksCount["external"]++
+		} else {
+			linksCount["internal"]++
+		}
 	})
 
 	return nil
@@ -135,8 +159,8 @@ func (s *Collector) registerAccessibleLinksCallback() error {
 func (s *Collector) registerOnScrapedCallback() error {
 	s.DefaultCollector.OnScraped(func(r *colly.Response) {
 
-		p, _ := json.Marshal(links)
-		s.Storage.Client.Set("links", p, 0)
+		p, _ := json.Marshal(linksCount)
+		s.Storage.Client.Set("linksCount", p, 0)
 
 	})
 
@@ -144,10 +168,10 @@ func (s *Collector) registerOnScrapedCallback() error {
 }
 
 func (s *Collector) Reset() error {
-	links = make(map[string]int)
+	linksCount = make(map[string]int)
 
 	keys := []string{
-		"htmlVersion", "title", "links", "headings",
+		"htmlVersion", "title", "linksCount", "headings", "numberOfPasswordFields", "url",
 	}
 
 	if err := s.Storage.Clear(); err != nil {
@@ -169,7 +193,7 @@ func (s *Collector) GetHtmlVersion() string {
 
 func (s *Collector) GetLinks() map[string]int {
 	var result = make(map[string]int)
-	p, _ := s.Storage.Client.Get("links").Bytes()
+	p, _ := s.Storage.Client.Get("linksCount").Bytes()
 
 	_ = json.Unmarshal(p, &result)
 	return result
@@ -181,6 +205,11 @@ func (s *Collector) GetHeadings() map[string]int {
 
 	_ = json.Unmarshal(p, &result)
 	return result
+}
+
+func (s *Collector) HasLoginForm() bool {
+	v, _ := s.Storage.Client.Get("numberOfPasswordFields").Int()
+	return (v == 1)
 }
 
 func (s *Collector) setDocTypes() {
