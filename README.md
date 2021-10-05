@@ -3,13 +3,20 @@
 This is a Golang version of a web scraper
 ## Build and run
 
-On the repo root directory run:
+1. On the repo root directory run:
 
-1. docker-compose up -d redis
-2. go build
-3. ./api-web-scraper
-4. on terminal run: `curl http://localhost:8080/scraper/page-contents\?url\=https://www.example.com` or on your browser or postman paste: `http://localhost:8080/scraper/page-contents?url=https://www.example.com`
-5. update the url parameter to view the page contents of other URLs.
+```bash
+docker-compose up -d redis
+go build
+./api-web-scraper
+```
+2. To view page scrape results:
+
+* on the terminal run: `curl http://localhost:8080/scraper/page-contents\?url\=https://www.example.com` or
+
+* on your browser or postman paste: `http://localhost:8080/scraper/page-contents?url=https://www.example.com`
+
+3. update the url parameter to view the page contents of other URLs.
 
 ### Code Formatting
 
