@@ -7,16 +7,18 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/edmore/api-web-scraper/model"
 	"github.com/gocolly/colly"
 	"github.com/gocolly/redisstorage"
 )
 
 type CollectorService interface {
-	Init() error
+	// Init() error
 	Visit(url string) error
 	GetPageTitle() string
 	GetHtmlVersion() string
-	GetLinks() map[string]int
+	GetLinksCount() map[string]int
+	GetLinks() []model.Link
 	GetHeadings() map[string]int
 	HasLoginForm() bool
 	Reset() error
@@ -24,6 +26,8 @@ type CollectorService interface {
 
 var doctypes = make(map[string]string)
 var linksCount = make(map[string]int)
+
+// var links = []model.Link{}
 
 type Collector struct {
 	DefaultCollector  *colly.Collector
@@ -35,7 +39,10 @@ func NewCollector(defaultCollector *colly.Collector, storage *redisstorage.Stora
 	delegateCollector := defaultCollector.Clone()
 	defaultCollector.MaxDepth = 2
 
-	return &Collector{defaultCollector, delegateCollector, storage}
+	coll := &Collector{defaultCollector, delegateCollector, storage}
+
+	coll.init()
+	return coll
 }
 
 func (s *Collector) Visit(u string) error {
@@ -49,7 +56,7 @@ func (s *Collector) Visit(u string) error {
 	return nil
 }
 
-func (s *Collector) Init() error {
+func (s *Collector) init() error {
 
 	s.setDocTypes()
 	s.registerPageTitleCallback()
@@ -110,6 +117,7 @@ func (s *Collector) registerHtmlCallback() error {
 }
 
 func (s *Collector) registerFollowLinksCallback() error {
+
 	s.DefaultCollector.OnHTML("a[href]", func(e *colly.HTMLElement) {
 		link := e.Request.AbsoluteURL(e.Attr("href"))
 
@@ -124,6 +132,7 @@ func (s *Collector) registerFollowLinksCallback() error {
 func (s *Collector) registerInaccessibleLinksCallback() error {
 
 	s.DelegateCollector.OnError(func(r *colly.Response, err error) {
+		var isInternal bool
 
 		u := s.Storage.Client.Get("url").Val()
 		parsedURL, _ := url.Parse(u)
@@ -131,17 +140,30 @@ func (s *Collector) registerInaccessibleLinksCallback() error {
 
 		if r.Request.URL.IsAbs() && parsedURL.Host != r.Request.URL.Host {
 			linksCount["external"]++
+
 		} else {
 			linksCount["internal"]++
+			isInternal = true
 		}
 
+		// save all inaccessibleLinks
+		l, _ := json.Marshal(model.Link{
+			Url:          r.Request.URL.String(),
+			StatusCode:   r.StatusCode,
+			IsInternal:   isInternal,
+			IsAccessible: false,
+		})
+
+		s.Storage.Client.LPush("links", l)
 	})
 
 	return nil
 }
 
 func (s *Collector) registerAccessibleLinksCallback() error {
+
 	s.DelegateCollector.OnResponse(func(r *colly.Response) {
+		var isInternal bool
 		u := s.Storage.Client.Get("url").Val()
 		parsedURL, _ := url.Parse(u)
 		linksCount["accessible"]++
@@ -150,7 +172,26 @@ func (s *Collector) registerAccessibleLinksCallback() error {
 			linksCount["external"]++
 		} else {
 			linksCount["internal"]++
+			isInternal = true
 		}
+
+		// save all accessibleLinks
+		// links = append(links, model.Link{
+		// 	Url:          r.Request.URL.String(),
+		// 	StatusCode:   r.StatusCode,
+		// 	IsInternal:   isInternal,
+		// 	IsAccessible: true,
+		// })
+
+		// save all inaccessibleLinks
+		l, _ := json.Marshal(model.Link{
+			Url:          r.Request.URL.String(),
+			StatusCode:   r.StatusCode,
+			IsInternal:   isInternal,
+			IsAccessible: true,
+		})
+
+		s.Storage.Client.LPush("links", l)
 	})
 
 	return nil
@@ -162,23 +203,26 @@ func (s *Collector) registerOnScrapedCallback() error {
 		p, _ := json.Marshal(linksCount)
 		s.Storage.Client.Set("linksCount", p, 0)
 
+		// q, _ := json.Marshal(links)
+		// s.Storage.Client.Set("links", q, 0)
+
 	})
 
 	return nil
 }
 
 func (s *Collector) Reset() error {
-	linksCount = make(map[string]int)
-
-	keys := []string{
-		"htmlVersion", "title", "linksCount", "headings", "numberOfPasswordFields", "url",
-	}
+	// keys := []string{
+	// 	"htmlVersion", "title", "linksCount", "headings",
+	// 	"numberOfPasswordFields", "url", "links",
+	// }
 
 	if err := s.Storage.Clear(); err != nil {
 		return err
 	}
 
-	return s.Storage.Client.Del(keys...).Err()
+	return s.Storage.Client.FlushAll().Err()
+	// return s.Storage.Client.Del(keys...).Err()
 }
 
 func (s *Collector) GetPageTitle() string {
@@ -191,12 +235,33 @@ func (s *Collector) GetHtmlVersion() string {
 	return s.Storage.Client.Get("htmlVersion").Val()
 }
 
-func (s *Collector) GetLinks() map[string]int {
+func (s *Collector) GetLinksCount() map[string]int {
 	var result = make(map[string]int)
 	p, _ := s.Storage.Client.Get("linksCount").Bytes()
 
 	_ = json.Unmarshal(p, &result)
 	return result
+}
+
+func (s *Collector) GetLinks() []model.Link {
+	var links = []model.Link{}
+	var link = model.Link{}
+	v := s.Storage.Client.LLen("links").Val()
+
+	// vals, _ := s.Storage.Client.LRange("links", 0, -1).Result()
+	// for i, v := range vals {
+	var i int64
+	for i = 0; i < v; i++ {
+
+		l, _ := s.Storage.Client.LPop("links").Bytes()
+		_ = json.Unmarshal(l, &link)
+
+		println(string(l))
+
+		links = append(links, link)
+	}
+
+	return links
 }
 
 func (s *Collector) GetHeadings() map[string]int {

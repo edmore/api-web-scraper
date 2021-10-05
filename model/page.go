@@ -4,6 +4,7 @@ type Page struct {
 	HtmlVersion   string         `json:"htmlVersion"`
 	Title         string         `json:"title"`
 	HeadingsCount map[string]int `json:"headingsCountByLevel"`
+	Links         []Link         `json:"links"`
 	LinksCount    map[string]int `json:"linksCount"`
 	HasLoginForm  bool           `json:"hasLoginForm"`
 }

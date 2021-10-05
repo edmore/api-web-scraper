@@ -10,7 +10,7 @@ import (
 )
 
 type Handler struct {
-	Collector service.CollectorService
+	CollectorService service.CollectorService
 }
 
 func (h *Handler) GetPageContents(c *gin.Context) {
@@ -22,20 +22,20 @@ func (h *Handler) GetPageContents(c *gin.Context) {
 		return
 	}
 
-	if err := h.Collector.Reset(); err != nil {
+	if err := h.CollectorService.Reset(); err != nil {
 		c.Status(http.StatusInternalServerError)
 		return
 	}
-	h.Collector.Init()
-	h.Collector.Visit(parsedURL.String())
+	h.CollectorService.Visit(parsedURL.String())
 
 	c.JSON(http.StatusOK, gin.H{
 		"results": model.Page{
-			HtmlVersion:   h.Collector.GetHtmlVersion(),
-			Title:         h.Collector.GetPageTitle(),
-			HeadingsCount: h.Collector.GetHeadings(),
-			LinksCount:    h.Collector.GetLinks(),
-			HasLoginForm:  h.Collector.HasLoginForm(),
+			HtmlVersion:   h.CollectorService.GetHtmlVersion(),
+			Title:         h.CollectorService.GetPageTitle(),
+			HeadingsCount: h.CollectorService.GetHeadings(),
+			Links:         h.CollectorService.GetLinks(),
+			LinksCount:    h.CollectorService.GetLinksCount(),
+			HasLoginForm:  h.CollectorService.HasLoginForm(),
 		},
 	})
 }
