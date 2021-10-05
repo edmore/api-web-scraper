@@ -27,8 +27,6 @@ type CollectorService interface {
 var doctypes = make(map[string]string)
 var linksCount = make(map[string]int)
 
-// var links = []model.Link{}
-
 type Collector struct {
 	DefaultCollector  *colly.Collector
 	DelegateCollector *colly.Collector
@@ -39,10 +37,10 @@ func NewCollector(defaultCollector *colly.Collector, storage *redisstorage.Stora
 	delegateCollector := defaultCollector.Clone()
 	defaultCollector.MaxDepth = 2
 
-	coll := &Collector{defaultCollector, delegateCollector, storage}
+	collector := &Collector{defaultCollector, delegateCollector, storage}
 
-	coll.init()
-	return coll
+	collector.init()
+	return collector
 }
 
 func (s *Collector) Visit(u string) error {
@@ -175,14 +173,6 @@ func (s *Collector) registerAccessibleLinksCallback() error {
 			isInternal = true
 		}
 
-		// save all accessibleLinks
-		// links = append(links, model.Link{
-		// 	Url:          r.Request.URL.String(),
-		// 	StatusCode:   r.StatusCode,
-		// 	IsInternal:   isInternal,
-		// 	IsAccessible: true,
-		// })
-
 		// save all inaccessibleLinks
 		l, _ := json.Marshal(model.Link{
 			Url:          r.Request.URL.String(),
@@ -203,26 +193,22 @@ func (s *Collector) registerOnScrapedCallback() error {
 		p, _ := json.Marshal(linksCount)
 		s.Storage.Client.Set("linksCount", p, 0)
 
-		// q, _ := json.Marshal(links)
-		// s.Storage.Client.Set("links", q, 0)
-
 	})
 
 	return nil
 }
 
 func (s *Collector) Reset() error {
-	// keys := []string{
-	// 	"htmlVersion", "title", "linksCount", "headings",
-	// 	"numberOfPasswordFields", "url", "links",
-	// }
+	keys := []string{
+		"htmlVersion", "title", "linksCount", "headings",
+		"numberOfPasswordFields", "url", "links",
+	}
 
 	if err := s.Storage.Clear(); err != nil {
 		return err
 	}
 
-	return s.Storage.Client.FlushAll().Err()
-	// return s.Storage.Client.Del(keys...).Err()
+	return s.Storage.Client.Del(keys...).Err()
 }
 
 func (s *Collector) GetPageTitle() string {
@@ -248,8 +234,6 @@ func (s *Collector) GetLinks() []model.Link {
 	var link = model.Link{}
 	v := s.Storage.Client.LLen("links").Val()
 
-	// vals, _ := s.Storage.Client.LRange("links", 0, -1).Result()
-	// for i, v := range vals {
 	var i int64
 	for i = 0; i < v; i++ {
 

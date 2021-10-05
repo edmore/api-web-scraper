@@ -32,8 +32,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /api-web-scraper 
 ##
 ## Deploy
 ##
-#FROM alpine:latest
-#RUN apk --no-cache add ca-certificates
+# FROM alpine:latest
+# RUN apk --no-cache add ca-certificates
 FROM gcr.io/distroless/base-debian10
 
 WORKDIR /
