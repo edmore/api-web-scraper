@@ -6,9 +6,6 @@ It makes use of a number of frameworks such the [gin](https://github.com/gin-gon
 
 Colly has some great features that make it suitable for fast, ethical scraping.
 
-* https://github.com/gin-gonic/gin
-* 
-
 ## Build and run
 
 1. On the repo root directory run:
