@@ -8,7 +8,6 @@ import (
 	"github.com/edmore/api-web-scraper/resource"
 	"github.com/edmore/api-web-scraper/service"
 	"github.com/gocolly/colly"
-	"github.com/gocolly/colly/debug"
 	"github.com/gocolly/colly/extensions"
 	"github.com/gocolly/redisstorage"
 )
@@ -31,7 +30,7 @@ func main() {
 		// are visited, and no further links are followed
 		colly.MaxDepth(1),
 		colly.Async(true),
-		colly.Debugger(&debug.LogDebugger{}),
+		// colly.Debugger(&debug.LogDebugger{}),
 	)
 	extensions.RandomUserAgent(defaultCollector)
 	// extensions.Referer(collector)
@@ -50,7 +49,7 @@ func main() {
 		Prefix:   "api-web-scraper",
 	}
 
-	// add storage to the collector
+	// add redis storage to the collector
 	err := defaultCollector.SetStorage(storage)
 	if err != nil {
 		panic(err)

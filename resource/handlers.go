@@ -15,7 +15,6 @@ type Handler struct {
 
 func (h *Handler) GetPageContents(c *gin.Context) {
 	u := c.Query("url")
-
 	parsedURL, err := url.Parse(u)
 	if err != nil {
 		c.Status(http.StatusInternalServerError)

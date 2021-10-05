@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/edmore/api-web-scraper/model"
 	"github.com/gocolly/colly"
@@ -13,7 +14,6 @@ import (
 )
 
 type CollectorService interface {
-	// Init() error
 	Visit(url string) error
 	GetPageTitle() string
 	GetHtmlVersion() string
@@ -43,54 +43,52 @@ func NewCollector(defaultCollector *colly.Collector, storage *redisstorage.Stora
 	return collector
 }
 
-func (s *Collector) Visit(u string) error {
+func (c *Collector) Visit(u string) error {
+	c.setValue("url", u, 0)
 
-	s.Storage.Client.Set(
-		"url", u, 0)
-
-	s.DefaultCollector.Visit(u)
-	s.DefaultCollector.Wait()
+	c.DefaultCollector.Visit(u)
+	c.DefaultCollector.Wait()
 
 	return nil
 }
 
-func (s *Collector) init() error {
+func (c *Collector) init() error {
+	c.setDocTypes()
 
-	s.setDocTypes()
-	s.registerPageTitleCallback()
-	s.registerHtmlVersionCallback()
-	s.registerFollowLinksCallback()
-	s.registerInaccessibleLinksCallback()
-	s.registerAccessibleLinksCallback()
-	s.registerHtmlCallback()
-	s.registerOnScrapedCallback()
+	// registers callbacks
+	c.registerPageTitleCallback()
+	c.registerHtmlVersionCallback()
+	c.registerFollowLinksCallback()
+	c.registerInaccessibleLinksCallback()
+	c.registerAccessibleLinksCallback()
+	c.registerHtmlCallback()
+	c.registerOnScrapedCallback()
 
 	return nil
 }
 
-func (s *Collector) registerPageTitleCallback() error {
-	s.DefaultCollector.OnHTML("title", func(e *colly.HTMLElement) {
-		s.Storage.Client.Set("title", e.Text, 0)
+func (c *Collector) registerPageTitleCallback() error {
+	c.DefaultCollector.OnHTML("title", func(e *colly.HTMLElement) {
+		c.setValue("title", e.Text, 0)
 	})
 	return nil
 }
 
-func (s *Collector) registerHtmlVersionCallback() error {
-	s.DefaultCollector.OnResponse(func(r *colly.Response) {
+func (c *Collector) registerHtmlVersionCallback() error {
+	c.DefaultCollector.OnResponse(func(r *colly.Response) {
 
 		bytesReader := bytes.NewReader(r.Body)
 		bufReader := bufio.NewReader(bytesReader)
 		doctype, _, _ := bufReader.ReadLine()
 
-		s.Storage.Client.Set(
-			"htmlVersion", determineDoctype(string(doctype)), 0)
+		c.setValue("htmlVersion", determineDoctype(string(doctype)), 0)
 	})
 
 	return nil
 }
 
-func (s *Collector) registerHtmlCallback() error {
-	s.DefaultCollector.OnHTML("html", func(html *colly.HTMLElement) {
+func (c *Collector) registerHtmlCallback() error {
+	c.DefaultCollector.OnHTML("html", func(html *colly.HTMLElement) {
 		var headings = make(map[string]int)
 		var numberOfPasswordFields int
 
@@ -103,141 +101,121 @@ func (s *Collector) registerHtmlCallback() error {
 		})
 
 		h, _ := json.Marshal(headings)
-		s.Storage.Client.Set(
-			"headings", h, 0)
-
-		s.Storage.Client.Set(
-			"numberOfPasswordFields", numberOfPasswordFields, 0)
+		c.setBytes("headings", h, 0)
+		c.setIntValue("numberOfPasswordFields", numberOfPasswordFields, 0)
 
 	})
 
 	return nil
 }
 
-func (s *Collector) registerFollowLinksCallback() error {
+func (c *Collector) registerFollowLinksCallback() error {
 
-	s.DefaultCollector.OnHTML("a[href]", func(e *colly.HTMLElement) {
+	c.DefaultCollector.OnHTML("a[href]", func(e *colly.HTMLElement) {
 		link := e.Request.AbsoluteURL(e.Attr("href"))
 
 		if link != "" {
-			s.DelegateCollector.Visit(link)
-			s.DelegateCollector.Wait()
+			c.DelegateCollector.Visit(link)
+			c.DelegateCollector.Wait()
 		}
 	})
 	return nil
 }
 
-func (s *Collector) registerInaccessibleLinksCallback() error {
+func (c *Collector) registerAccessibleLinksCallback() error {
 
-	s.DelegateCollector.OnError(func(r *colly.Response, err error) {
-		var isInternal bool
+	c.DelegateCollector.OnResponse(func(r *colly.Response) {
+		IsAccessible := true
 
-		u := s.Storage.Client.Get("url").Val()
-		parsedURL, _ := url.Parse(u)
-		linksCount["inaccessible"]++
+		parsedPageURL, _ := url.Parse(c.getValue("url"))
+		followedURL := r.Request.URL
+		isInternal := isInternal(parsedPageURL, followedURL)
 
-		if r.Request.URL.IsAbs() && parsedURL.Host != r.Request.URL.Host {
-			linksCount["external"]++
+		// save all accessibleLinks
+		c.addLinks(IsAccessible, isInternal, r.StatusCode, followedURL)
+	})
 
-		} else {
-			linksCount["internal"]++
-			isInternal = true
-		}
+	return nil
+}
+
+func (c *Collector) registerInaccessibleLinksCallback() error {
+
+	c.DelegateCollector.OnError(func(r *colly.Response, err error) {
+		IsAccessible := false
+
+		parsedPageURL, _ := url.Parse(c.getValue("url"))
+		followedURL := r.Request.URL
+		isInternal := isInternal(parsedPageURL, followedURL)
 
 		// save all inaccessibleLinks
-		l, _ := json.Marshal(model.Link{
-			Url:          r.Request.URL.String(),
-			StatusCode:   r.StatusCode,
-			IsInternal:   isInternal,
-			IsAccessible: false,
-		})
-
-		s.Storage.Client.LPush("links", l)
+		c.addLinks(IsAccessible, isInternal, r.StatusCode, followedURL)
 	})
 
 	return nil
 }
 
-func (s *Collector) registerAccessibleLinksCallback() error {
-
-	s.DelegateCollector.OnResponse(func(r *colly.Response) {
-		var isInternal bool
-		u := s.Storage.Client.Get("url").Val()
-		parsedURL, _ := url.Parse(u)
-		linksCount["accessible"]++
-
-		if r.Request.URL.IsAbs() && parsedURL.Host != r.Request.URL.Host {
-			linksCount["external"]++
-		} else {
-			linksCount["internal"]++
-			isInternal = true
-		}
-
-		// save all inaccessibleLinks
-		l, _ := json.Marshal(model.Link{
-			Url:          r.Request.URL.String(),
-			StatusCode:   r.StatusCode,
-			IsInternal:   isInternal,
-			IsAccessible: true,
-		})
-
-		s.Storage.Client.LPush("links", l)
+func (c *Collector) addLinks(IsAccessible bool, isInternal bool, statusCode int, followedURL *url.URL) {
+	link, _ := json.Marshal(model.Link{
+		Url:          followedURL.String(),
+		StatusCode:   statusCode,
+		IsInternal:   isInternal,
+		IsAccessible: IsAccessible,
 	})
 
-	return nil
+	c.Storage.Client.LPush("links", link)
 }
 
-func (s *Collector) registerOnScrapedCallback() error {
-	s.DefaultCollector.OnScraped(func(r *colly.Response) {
+func (c *Collector) registerOnScrapedCallback() error {
+	c.DefaultCollector.OnScraped(func(r *colly.Response) {
 
 		p, _ := json.Marshal(linksCount)
-		s.Storage.Client.Set("linksCount", p, 0)
+		c.setBytes("linksCount", p, 0)
 
 	})
 
 	return nil
 }
 
-func (s *Collector) Reset() error {
+func (c *Collector) Reset() error {
 	keys := []string{
-		"htmlVersion", "title", "linksCount", "headings",
+		"htmlVersion", "title", "headings",
 		"numberOfPasswordFields", "url", "links",
 	}
 
-	if err := s.Storage.Clear(); err != nil {
+	if err := c.Storage.Clear(); err != nil {
 		return err
 	}
 
-	return s.Storage.Client.Del(keys...).Err()
+	return c.Storage.Client.Del(keys...).Err()
 }
 
-func (s *Collector) GetPageTitle() string {
+func (c *Collector) GetPageTitle() string {
 
-	return s.Storage.Client.Get("title").Val()
+	return c.getValue("title")
 }
 
-func (s *Collector) GetHtmlVersion() string {
+func (c *Collector) GetHtmlVersion() string {
 
-	return s.Storage.Client.Get("htmlVersion").Val()
+	return c.getValue("htmlVersion")
 }
 
-func (s *Collector) GetLinksCount() map[string]int {
+func (c *Collector) GetLinksCount() map[string]int {
 	var result = make(map[string]int)
-	p, _ := s.Storage.Client.Get("linksCount").Bytes()
+	p, _ := c.getBytes("linksCount")
 
 	_ = json.Unmarshal(p, &result)
 	return result
 }
 
-func (s *Collector) GetLinks() []model.Link {
+func (c *Collector) GetLinks() []model.Link {
 	var links = []model.Link{}
 	var link = model.Link{}
-	v := s.Storage.Client.LLen("links").Val()
+	v := c.Storage.Client.LLen("links").Val()
 
 	var i int64
 	for i = 0; i < v; i++ {
 
-		l, _ := s.Storage.Client.LPop("links").Bytes()
+		l, _ := c.Storage.Client.LPop("links").Bytes()
 		_ = json.Unmarshal(l, &link)
 
 		println(string(l))
@@ -248,20 +226,20 @@ func (s *Collector) GetLinks() []model.Link {
 	return links
 }
 
-func (s *Collector) GetHeadings() map[string]int {
+func (c *Collector) GetHeadings() map[string]int {
 	var result = make(map[string]int)
-	p, _ := s.Storage.Client.Get("headings").Bytes()
+	p, _ := c.getBytes("headings")
 
 	_ = json.Unmarshal(p, &result)
 	return result
 }
 
-func (s *Collector) HasLoginForm() bool {
-	v, _ := s.Storage.Client.Get("numberOfPasswordFields").Int()
+func (c *Collector) HasLoginForm() bool {
+	v, _ := c.getIntValue("numberOfPasswordFields")
 	return (v == 1)
 }
 
-func (s *Collector) setDocTypes() {
+func (c *Collector) setDocTypes() {
 	doctypes["HTML 4.01 Strict"] = `"-//W3C//DTD HTML 4.01//EN"`
 	doctypes["HTML 4.01 Transitional"] = `"-//W3C//DTD HTML 4.01 Transitional//EN"`
 	doctypes["HTML 4.01 Frameset"] = `"-//W3C//DTD HTML 4.01 Frameset//EN"`
@@ -273,7 +251,7 @@ func (s *Collector) setDocTypes() {
 }
 
 func determineDoctype(html string) string {
-	var version = "UNKNOWN"
+	var version = "COULD_NOT_BE_ESTABLISHED"
 
 	for doctype, matcher := range doctypes {
 		match := strings.Contains(
@@ -286,4 +264,38 @@ func determineDoctype(html string) string {
 	}
 
 	return version
+}
+
+func isInternal(pageURL *url.URL, followedURL *url.URL) bool {
+
+	if followedURL.IsAbs() && pageURL.Host != followedURL.Host {
+		return true
+	}
+
+	return false
+}
+
+// Storage helpers
+func (c *Collector) setValue(key string, val string, expiration time.Duration) {
+	c.Storage.Client.Set(key, val, 0)
+}
+
+func (c *Collector) setBytes(key string, val []byte, expiration time.Duration) {
+	c.Storage.Client.Set(key, val, 0)
+}
+
+func (c *Collector) setIntValue(key string, val int, expiration time.Duration) {
+	c.Storage.Client.Set(key, val, 0)
+}
+
+func (c *Collector) getIntValue(key string) (int, error) {
+	return c.Storage.Client.Get(key).Int()
+}
+
+func (c *Collector) getValue(key string) string {
+	return c.Storage.Client.Get(key).Val()
+}
+
+func (c *Collector) getBytes(key string) ([]byte, error) {
+	return c.Storage.Client.Get(key).Bytes()
 }
