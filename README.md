@@ -2,9 +2,13 @@
 
 This is a Golang version of a web scraper. 
 
-It makes use of a number of frameworks such the gin web framework with redis as a data store and colly for scraping.
+It makes use of a number of frameworks such the [gin](https://github.com/gin-gonic/gin) web framework with [redis](https://redis.io/) as a data store and [colly](https://github.com/gocolly/colly) for scraping.
 
 Colly has some great features that make it suitable for fast, ethical scraping.
+
+* https://github.com/gin-gonic/gin
+* 
+
 ## Build and run
 
 1. On the repo root directory run:
@@ -14,7 +18,7 @@ docker-compose up -d redis
 go build
 ./api-web-scraper
 ```
-2. To view page scrape results:
+2. To view page contents of a page:
 
   * on the terminal run: `curl http://localhost:8080/scraper/page-contents\?url\=https://www.example.com` or
 
@@ -42,13 +46,12 @@ TODO. Intention to use golangci.
 
 ### Assumptions
 
-1. no standard for login forms, so checked whether just one password field was present on a page. Two fields of type password are sometimes used for sign-up pages. Also worth noting is some pages have both sign-up and login pages on the same page.
-2. web application in my case is an API with a json response.
+* no standard for login forms, so checked whether just one password field was present on a page. Two fields of type password are sometimes used for sign-up pages. Also worth noting is some pages have both sign-up and login pages on the same page.
+* web application in my case is an API with a json response.
 
 ### Considerations and Improvements
 
 * more tests in the various application layers, and testing of different code paths and response codes
-* addition of linting, and running linter and fixing of any found issues
-* 
+* addition of linting, and fixing of any found issues
 * exploring some caching - for example colly has some caching mechanisms, and other useful enhancements
 * swagger file for contract
