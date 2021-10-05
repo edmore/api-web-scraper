@@ -4,7 +4,7 @@ This is a Golang version of a web scraper.
 
 It makes use of a number of frameworks such the [gin](https://github.com/gin-gonic/gin) web framework with [redis](https://redis.io/) as a data store and [colly](https://github.com/gocolly/colly) for scraping.
 
-Colly has some great features that make it suitable for fast, ethical scraping.
+Colly has some great [features](https://github.com/gocolly/colly#features) that make it suitable for fast, ethical scraping.
 
 ## Build and run
 
@@ -52,3 +52,4 @@ TODO. Intention to use golangci.
 * addition of linting, and fixing of any found issues
 * exploring some caching - for example colly has some caching mechanisms, and other useful enhancements
 * swagger file for contract
+* dockerization of applocation
