@@ -12,16 +12,25 @@ Colly has some great [features](https://github.com/gocolly/colly#features) that 
 
 ```bash
 docker-compose up -d redis
-go build
+go build .
 ./api-web-scraper
 ```
-2. To view page contents of a page:
+
+If you do not have docker-compose installed, please refer to this [page](https://docs.docker.com/compose/install/). It details installations for various OSes.
+
+2. There are two endpoints on this API:
+
+* `/scraper/page-contents?url={url}` - displays page contents
+* `/scraper/ping` - a ping endpoint
+
+
+3. To view page contents of a page:
 
   * on the terminal run: `curl http://localhost:8080/scraper/page-contents\?url\=https://www.example.com` or
 
-  * on your browser or postman paste: `http://localhost:8080/scraper/page-contents?url=https://www.example.com`
+  * on your browser or [postman](https://www.postman.com/) paste: `http://localhost:8080/scraper/page-contents?url=https://www.example.com`
 
-3. update the `url` parameter to view the page contents of other URLs.
+4. update the `{url}` parameter to view the page contents of other URLs.
 
 ### Code Formatting
 
@@ -33,9 +42,19 @@ go fmt $(go list ./... | grep -v /vendor/)
 
 ### Running tests:
 
-Gingko is used for testing. To install ginkgo: `go install github.com/onsi/ginkgo/ginkgo@latest to install ginkgo`
+Gingko is used for testing. 
 
-To run tests: `go test ./...`
+To install ginkgo: 
+
+```bash
+go install github.com/onsi/ginkgo/ginkgo@latest to install ginkgo
+```
+
+To run tests: 
+
+```bash
+go test ./...
+```
 
 ### Linting
 
@@ -53,3 +72,4 @@ TODO. Intention to use golangci.
 * exploring some caching - for example colly has some caching mechanisms, and other useful enhancements
 * swagger file for contract
 * dockerization of application
+* determine areas of optimization
