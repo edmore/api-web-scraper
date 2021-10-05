@@ -44,7 +44,7 @@ TODO. Intention to use golangci.
 ### Assumptions
 
 * no standard for login forms, so checked whether just one password field was present on a page. Two fields of type password are sometimes used for sign-up pages. Also worth noting is some pages have both sign-up and login pages on the same page.
-* web application in my case is an API with a json response.
+* web application in my case is an API with a JSON response.
 
 ### Considerations and Improvements
 
@@ -52,4 +52,4 @@ TODO. Intention to use golangci.
 * addition of linting, and fixing of any found issues
 * exploring some caching - for example colly has some caching mechanisms, and other useful enhancements
 * swagger file for contract
-* dockerization of applocation
+* dockerization of application
