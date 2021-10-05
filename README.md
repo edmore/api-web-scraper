@@ -12,11 +12,11 @@ go build
 ```
 2. To view page scrape results:
 
-* on the terminal run: `curl http://localhost:8080/scraper/page-contents\?url\=https://www.example.com` or
+  * on the terminal run: `curl http://localhost:8080/scraper/page-contents\?url\=https://www.example.com` or
 
-* on your browser or postman paste: `http://localhost:8080/scraper/page-contents?url=https://www.example.com`
+  * on your browser or postman paste: `http://localhost:8080/scraper/page-contents?url=https://www.example.com`
 
-3. update the url parameter to view the page contents of other URLs.
+3. update the `url` parameter to view the page contents of other URLs.
 
 ### Code Formatting
 
