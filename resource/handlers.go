@@ -25,7 +25,10 @@ func (h *Handler) GetPageContents(c *gin.Context) {
 		c.Status(http.StatusInternalServerError)
 		return
 	}
-	h.CollectorService.Visit(parsedURL.String())
+	if err := h.CollectorService.Visit(parsedURL.String()); err != nil {
+		c.Status(http.StatusInternalServerError)
+		return
+	}
 
 	links, linksCount := h.CollectorService.GetLinks()
 	c.JSON(http.StatusOK, gin.H{

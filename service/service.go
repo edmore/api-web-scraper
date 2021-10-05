@@ -41,10 +41,10 @@ func NewCollector(defaultCollector *colly.Collector, storage *redisstorage.Stora
 	return collector
 }
 
-func (c *Collector) Visit(u string) error {
-	c.setValue("url", u, 0)
+func (c *Collector) Visit(url string) error {
+	c.setValue("url", url, 0)
 
-	c.DefaultCollector.Visit(u)
+	c.DefaultCollector.Visit(url)
 	c.DefaultCollector.Wait()
 
 	return nil
@@ -151,7 +151,8 @@ func (c *Collector) registerInaccessibleLinksCallback() error {
 	return nil
 }
 
-func (c *Collector) addLinks(IsAccessible bool, isInternal bool, statusCode int, followedURL *url.URL) {
+func (c *Collector) addLinks(IsAccessible bool, isInternal bool,
+	statusCode int, followedURL *url.URL) {
 	link, _ := json.Marshal(model.Link{
 		Url:          followedURL.String(),
 		StatusCode:   statusCode,

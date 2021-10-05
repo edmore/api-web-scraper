@@ -1,0 +1,46 @@
+linters:
+  disable-all: true
+  enable:
+  - bodyclose
+  - deadcode
+  - depguard
+  - dogsled
+  - errcheck
+  - funlen
+  - gochecknoinits
+  - goconst
+  - gocritic
+  - gocyclo
+  - gofmt
+  - goimports
+  - golint
+  - goprintffuncname
+  - gosec
+  - gosimple
+  - govet
+  - ineffassign
+  - interfacer
+  - misspell
+  - rowserrcheck
+  - scopelint
+  - staticcheck
+  - structcheck
+  - stylecheck
+  - typecheck
+  - unconvert
+  - unused
+  - varcheck
+  - whitespace
+  - gochecknoglobals
+  - gocognit
+  - godox
+  - nestif
+  - prealloc
+  - testpackage
+
+
+linters-settings:
+ unused:
+   check-exported: true
+ gocyclo:
+   min-complexity: 10

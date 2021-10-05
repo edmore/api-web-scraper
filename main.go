@@ -7,6 +7,7 @@ import (
 
 	"github.com/edmore/api-web-scraper/resource"
 	"github.com/edmore/api-web-scraper/service"
+	"github.com/gin-gonic/gin"
 	"github.com/gocolly/colly"
 	"github.com/gocolly/colly/extensions"
 	"github.com/gocolly/redisstorage"
@@ -23,6 +24,7 @@ func main() {
    `
 
 	fmt.Println(asciiArt)
+	gin.SetMode(gin.ReleaseMode)
 
 	// configure defaultCollector
 	defaultCollector := colly.NewCollector(
@@ -33,7 +35,6 @@ func main() {
 		// colly.Debugger(&debug.LogDebugger{}),
 	)
 	extensions.RandomUserAgent(defaultCollector)
-	// extensions.Referer(collector)
 	defaultCollector.WithTransport(&http.Transport{
 		DisableKeepAlives: true,
 	})
