@@ -70,6 +70,7 @@ TODO. Intention to use golangci.
 In the interest of time some tradeoffs were made, however below are a few considerations.
 
 * more tests in the various application layers, and testing of different code paths and response codes
+* more extensive error handling
 * addition of linting, and fixing of any found issues
 * exploring some caching - for example colly has some caching mechanisms, and other useful enhancements
 * swagger file for contract
