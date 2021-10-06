@@ -16,7 +16,7 @@ go build .
 ./api-web-scraper
 ```
 
-If you do not have docker-compose installed, please refer to this [page](https://docs.docker.com/compose/install/). It details installations for various OSes.
+If you do not have docker-compose installed, please refer to this [page](https://docs.docker.com/compose/install/). It details installations for various OSes. The above instructions were tested on Linux and MacOSX.
 
 2. There are two endpoints on this API:
 
@@ -67,9 +67,12 @@ TODO. Intention to use golangci.
 
 ### Considerations and Improvements
 
+In the interest of time some tradeoffs were made, however below are a few considerations.
+
 * more tests in the various application layers, and testing of different code paths and response codes
 * addition of linting, and fixing of any found issues
 * exploring some caching - for example colly has some caching mechanisms, and other useful enhancements
 * swagger file for contract
-* dockerization of application
+* dockerization of application and deployment upstream
 * determine areas of optimization
+* * a production ready redis setup
