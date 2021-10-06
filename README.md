@@ -75,4 +75,4 @@ In the interest of time some tradeoffs were made, however below are a few consid
 * swagger file for contract
 * dockerization of application and deployment upstream
 * determine areas of optimization
-* * a production ready redis setup
+* a production ready redis setup
