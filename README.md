@@ -77,3 +77,4 @@ In the interest of time some tradeoffs were made, however below are a few consid
 * dockerization of application and deployment upstream
 * determine areas of optimization
 * a production ready redis setup
+* Configuration of CI/CD pipeline
